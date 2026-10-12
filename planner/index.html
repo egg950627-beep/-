@@ -559,11 +559,14 @@ function viewDay() {
   const isToday = d === today();
   const hp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 48;
 
+  // the timeline starts at 06:00, or earlier when the day has an earlier item
+  const earliest = Math.min(...list.filter(o => o.start).map(o => toMin(o.start)));
+  const h0 = Math.min(H0, Math.floor(earliest / 60));
   // timeline blocks with overlap columns
   const timed = list.filter(o => o.start).map(o => {
     let s = toMin(o.start), e = toMin(o.end);
     if (e == null || e <= s) e = s + (Number(o.estMinutes) || 60);
-    return { o, s: Math.max(s, H0 * 60), e: Math.min(e, H1 * 60) };
+    return { o, s: Math.max(s, h0 * 60), e: Math.min(e, H1 * 60) };
   }).filter(b => b.e > b.s).sort((a, b) => a.s - b.s || b.e - a.e);
   let cluster = [], clusterEnd = -1;
   const flush = () => {
@@ -580,9 +583,9 @@ function viewDay() {
   flush();
 
   let hours = '';
-  for (let h = H0; h <= H1; h++) hours += `<span class="mono" style="top:${(h - H0) * hp}px">${pad(h)}:00</span>`;
+  for (let h = h0; h <= H1; h++) hours += `<span class="mono" style="top:${(h - h0) * hp}px">${pad(h)}:00</span>`;
   const blocks = timed.map(b => {
-    const top = (b.s - H0 * 60) / 60 * hp, h = Math.max(24, (b.e - b.s) / 60 * hp - 3);
+    const top = (b.s - h0 * 60) / 60 * hp, h = Math.max(24, (b.e - b.s) / 60 * hp - 3);
     const w = 100 / b.cols, o = b.o;
     const sub = isStudyType(o.type) && subjName(o.subjectId) ? ` · ${esc(subjName(o.subjectId))}` : '';
     return `<div class="blk ${o.done ? 'done' : ''}" style="--tc:${TYPES[o.type].color};top:${top + 1}px;height:${h}px;left:calc(${b.col * w}% + 4px);width:calc(${w}% - 6px)" data-act="edit" data-id="${o.id}" data-date="${d}">
@@ -591,7 +594,7 @@ function viewDay() {
   let now = '';
   if (isToday) {
     const n = new Date(), m = n.getHours() * 60 + n.getMinutes();
-    if (m >= H0 * 60 && m <= H1 * 60) now = `<div class="now" style="top:${(m - H0 * 60) / 60 * hp}px"><span>${pad(n.getHours())}:${pad(n.getMinutes())}</span></div>`;
+    if (m >= h0 * 60 && m <= H1 * 60) now = `<div class="now" style="top:${(m - h0 * 60) / 60 * hp}px"><span>${pad(n.getHours())}:${pad(n.getMinutes())}</span></div>`;
   }
   const doneN = list.filter(o => o.done).length;
   const pct = list.length ? Math.round(doneN / list.length * 100) : 0;
@@ -612,12 +615,12 @@ function viewDay() {
   </div></div>
   <div class="day" data-pane="${S.pane}">
     <section class="card tl-card">
-      <div class="card-h"><h2>時間表</h2><span class="sub">06:00–24:00</span></div>
+      <div class="card-h"><h2>時間表</h2><span class="sub">${pad(h0)}:00–24:00</span></div>
       <div class="tl-hint">點空白處可在該時段新增</div>
       <div class="tl-scroll">
-        <div class="tl" style="height:${(H1 - H0) * hp + 16}px;padding-top:8px">
-          <div class="tl-hours" style="height:${(H1 - H0) * hp}px">${hours}</div>
-          <div class="tl-grid" data-act="slot" data-date="${d}" style="height:${(H1 - H0) * hp}px">${blocks}${now}</div>
+        <div class="tl" style="height:${(H1 - h0) * hp + 16}px;padding-top:8px">
+          <div class="tl-hours" style="height:${(H1 - h0) * hp}px">${hours}</div>
+          <div class="tl-grid" data-act="slot" data-date="${d}" data-h0="${h0}" style="height:${(H1 - h0) * hp}px">${blocks}${now}</div>
         </div>
       </div>
     </section>
@@ -900,7 +903,7 @@ document.addEventListener('click', async e => {
     if (e.target !== el) return; // clicks on blocks are handled by their own data-act
     const hp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 48;
     const y = e.clientY - el.getBoundingClientRect().top;
-    const m = Math.min(H1 * 60 - 30, H0 * 60 + Math.floor(y / hp * 2) * 30);
+    const m = Math.min(H1 * 60 - 30, Number(el.dataset.h0) * 60 + Math.floor(y / hp * 2) * 30);
     return openItem({ date: el.dataset.date, start: fmtMin(m), end: fmtMin(Math.min(m + 60, 1439)) });
   }
   e.stopPropagation();
