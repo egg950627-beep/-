@@ -29,7 +29,7 @@
   --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --radius: 10px;
-  --hour: 56px;
+  --hour: 48px;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -80,7 +80,8 @@ main { max-width: 1280px; margin: 0 auto; padding-block: 8px 40px; padding-inlin
 /* ---------- day view ---------- */
 .day { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 .pane-toggle { display: none; }
-.tl-scroll { max-height: calc(100dvh - 190px); min-height: 360px; overflow-y: auto; border-radius: 0 0 var(--radius) var(--radius); }
+.tl-scroll { padding-bottom: 8px; }
+.todo-card { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 72px); }
 .tl { position: relative; display: grid; grid-template-columns: 52px 1fr; }
 .tl-hours { position: relative; }
 .tl-hours span { position: absolute; right: 8px; transform: translateY(-50%); font-size: 11px; color: var(--muted); }
@@ -249,7 +250,7 @@ details.tbl summary { color: var(--dingley); cursor: pointer; width: max-content
 
 /* ---------- phone ---------- */
 @media (max-width: 760px) {
-  :root { --hour: 48px; }
+  :root { --hour: 44px; }
   .top .tabs, .top .btn-add { display: none; }
   .top-in { padding-block: 8px; }
   .brand { font-size: 18px; }
@@ -261,7 +262,7 @@ details.tbl summary { color: var(--dingley); cursor: pointer; width: max-content
   .pane-toggle .seg { width: 100%; }
   .pane-toggle .seg button { flex: 1; justify-content: center; }
   .day[data-pane="timeline"] .todo-card, .day[data-pane="todo"] .tl-card { display: none; }
-  .tl-scroll { max-height: calc(100dvh - 260px); }
+  .todo-card { position: static; }
   .week { grid-template-columns: 1fr; }
   .wd ul { min-height: 0; }
   .wd ul:empty { display: none; }
@@ -556,7 +557,7 @@ function welcome() {
 function viewDay() {
   const d = S.cursor, list = occsOn(d);
   const isToday = d === today();
-  const hp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 56;
+  const hp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 48;
 
   // timeline blocks with overlap columns
   const timed = list.filter(o => o.start).map(o => {
@@ -613,7 +614,7 @@ function viewDay() {
     <section class="card tl-card">
       <div class="card-h"><h2>時間表</h2><span class="sub">06:00–24:00</span></div>
       <div class="tl-hint">點空白處可在該時段新增</div>
-      <div class="tl-scroll" id="tl-scroll" data-keep-scroll>
+      <div class="tl-scroll">
         <div class="tl" style="height:${(H1 - H0) * hp + 16}px;padding-top:8px">
           <div class="tl-hours" style="height:${(H1 - H0) * hp}px">${hours}</div>
           <div class="tl-grid" data-act="slot" data-date="${d}" style="height:${(H1 - H0) * hp}px">${blocks}${now}</div>
@@ -835,16 +836,6 @@ function render() {
 
   for (const id in scrolls) { const el = document.getElementById(id); if (el) el.scrollTop = scrolls[id]; }
   if (focusId) { const el = document.getElementById(focusId); if (el) { el.focus(); if (focusVal != null && 'value' in el) el.value = focusVal; } }
-  if (S.view === 'day' && S.scrollToNow) {
-    const sc = $('#tl-scroll');
-    if (sc && sc.offsetParent) {
-      const hp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 56;
-      const first = occsOn(S.cursor).find(o => o.start);
-      let m = S.cursor === today() ? new Date().getHours() * 60 + new Date().getMinutes() - 60 : (first ? toMin(first.start) - 30 : 8 * 60);
-      sc.scrollTop = Math.max(0, (m - H0 * 60) / 60 * hp);
-      S.scrollToNow = false;
-    }
-  }
   if (S.view === 'study') drawCharts();
 }
 
@@ -907,7 +898,7 @@ document.addEventListener('click', async e => {
   const a = el.dataset.act;
   if (a === 'slot') {
     if (e.target !== el) return; // clicks on blocks are handled by their own data-act
-    const hp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 56;
+    const hp = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour')) || 48;
     const y = e.clientY - el.getBoundingClientRect().top;
     const m = Math.min(H1 * 60 - 30, H0 * 60 + Math.floor(y / hp * 2) * 30);
     return openItem({ date: el.dataset.date, start: fmtMin(m), end: fmtMin(Math.min(m + 60, 1439)) });
